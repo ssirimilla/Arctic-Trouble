@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Vanishing Arctic</title>
+
+  <!-- D3 v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- TopoJSON client -->
+  <script src="https://unpkg.com/topojson-client@3"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- HERO                                                    -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="hero">
+    <div class="hero-stars"></div>
+    <div class="aurora"></div>
+
+    <p class="hero-label">A Climate Story</p>
+    <h1>The Vanishing<br><em>Arctic</em></h1>
+    <p class="hero-sub">
+      Scroll through four decades of sea-ice data to witness
+      one of Earth's most dramatic transformations.
+    </p>
+
+    <div class="scroll-cue">
+      <div class="scroll-arrow"></div>
+      <span>Scroll</span>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SCROLLYTELLING                                          -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div id="scrolly-container">
+
+    <!-- ── Left: Sticky Globe ─────────────────────────────── -->
+    <div class="sticky-visual">
+
+      <div id="map-container"></div>
+
+      <div class="data-display">
+        <div class="data-inner">
+          <p id="year-label">1979</p>
+        </div>
+        <p id="extent-label">
+          <span class="extent-value"><span id="extent-number">7.1</span> M km²</span>
+          September minimum extent
+        </p>
+        <div class="loss-bar-wrap">
+          <div class="loss-bar-label">
+            <span>Ice lost since 1979</span>
+            <span id="loss-pct">0%</span>
+          </div>
+          <div class="loss-bar-track">
+            <div class="loss-bar-fill" id="loss-bar-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Right: Scrolling Story Cards ───────────────────── -->
+    <div class="scroll-text">
+
+      <!-- Step 1 -->
+      <div class="step is-active" data-year="1979">
+        <div class="step-content">
+          <span class="step-year-tag">1979 — Baseline</span>
+          <h2>The Era of Ice</h2>
+          <p>
+            Satellite monitoring begins. The Arctic Ocean is locked in
+            thick, multi-year ice connecting Russia, Alaska, Canada, and
+            Greenland in one continuous frozen expanse. The September
+            minimum covers roughly <strong>7.1 million km²</strong>.
+          </p>
+          <div class="step-stat">
+            <div class="stat-item">
+              <span class="stat-number">7.1M</span>
+              <span class="stat-label">km² extent</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">–</span>
+              <span class="stat-label">First satellite record</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step" data-year="2005">
+        <div class="step-content">
+          <span class="step-year-tag">2005 — Accelerating</span>
+          <h2>The Shrink Begins</h2>
+          <p>
+            The extent drops to <strong>5.5 million km²</strong>. Wide
+            expanses of open ocean begin appearing off the coasts of
+            Siberia and Alaska through the late-summer months, opening
+            shipping routes that were once permanently frozen.
+          </p>
+          <div class="step-stat">
+            <div class="stat-item">
+              <span class="stat-number">5.5M</span>
+              <span class="stat-label">km² extent</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">−23%</span>
+              <span class="stat-label">Loss from 1979</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step" data-year="2012">
+        <div class="step-content">
+          <span class="step-year-tag">2012 — Record Minimum</span>
+          <h2>The Catastrophic Melt</h2>
+          <p>
+            A devastating season. Ice plummets to just <strong>3.39 million km²</strong>
+            — the lowest ever recorded in human history. The Northwest
+            Passage opens to unescorted shipping for the first time.
+            Arctic amplification is now undeniable.
+          </p>
+          <div class="step-stat">
+            <div class="stat-item">
+              <span class="stat-number">3.4M</span>
+              <span class="stat-label">km² extent</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">−52%</span>
+              <span class="stat-label">All-time record loss</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step" data-year="2024">
+        <div class="step-content">
+          <span class="step-year-tag">2024 — The New Normal</span>
+          <h2>A Permanently Changed World</h2>
+          <p>
+            While slightly above the 2012 record, <strong>4.2 million km²</strong>
+            is now the expected baseline. The ice that remains is
+            dangerously thin and seasonal. Every single year since 2007
+            ranks among the 20 lowest extents ever measured.
+          </p>
+          <div class="step-stat">
+            <div class="stat-item">
+              <span class="stat-number">4.2M</span>
+              <span class="stat-label">km² extent</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">−41%</span>
+              <span class="stat-label">vs. 1979 baseline</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /scroll-text -->
+  </div><!-- /scrolly-container -->
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- OUTRO                                                   -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="outro">
+    <h2>The Ice Doesn't Lie</h2>
+    <p>
+      Four decades of satellite data tell a single, unambiguous story.
+      The Arctic is warming four times faster than the global average —
+      and the sea ice is its most visible casualty.
+    </p>
+    <p class="source-note">
+      Data: NSIDC Sea Ice Index · Visualisation: D3.js / TopoJSON
+    </p>
+  </section>
+
+  <!-- Script (deferred, after DOM is ready) -->
+  <script src="main.js"></script>
+
+</body>
+</html>
