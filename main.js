@@ -118,19 +118,25 @@
    * artefact because D3 connects outer rings across the projection boundary.
    */
   function featureCollectionToMultiPolygon(fc) {
-    const allRings = [];
+    const polygons = [];
+
     (fc.features || []).forEach(feat => {
       const geom = feat && feat.geometry;
       if (!geom) return;
+
       if (geom.type === "Polygon") {
-        allRings.push(...geom.coordinates);
+        polygons.push(geom.coordinates);
       } else if (geom.type === "MultiPolygon") {
-        geom.coordinates.forEach(poly => allRings.push(...poly));
+        polygons.push(...geom.coordinates);
       }
     });
+
     return {
       type: "Feature",
-      geometry: { type: "MultiPolygon", coordinates: allRings.map(ring => [ring]) },
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: polygons
+      },
       properties: {}
     };
   }
@@ -272,92 +278,214 @@
     .catch(err => console.error("World atlas load failed:", err));
 
   /* ── Temperature Map Initialization ───────────────────────── */
+  /* ── Temperature Choropleth Map ─────────────────────────── */
   function initTemperatureMap() {
     const container = document.getElementById("temp-map-container");
     if (!container) return;
-    
-    const w = container.clientWidth || 800;
-    const h = container.clientHeight || 600;
-    const r = Math.min(w, h) / 2.2;
 
-    const tempSvg = d3.select("#temp-map-container")
-      .append("svg")
-      .attr("width", w)
-      .attr("height", h)
-      .attr("viewBox", `0 0 ${w} ${h}`);
+    const w = container.clientWidth  || 900;
+    const h = container.clientHeight || 720;
 
-    const tempProj = d3.geoOrthographic()
-      .scale(r * 2.0)
+    // AzimuthalEquidistant: r = scale * θ_radians.
+    // scale = ARCTIC_R / (π/2)  → full hemisphere (0–90°N) fills the circle.
+    const ARCTIC_R = Math.min(w, h) * 0.46;
+
+    const DEG_TO_SHOW = 32;
+
+    const tempProj = d3.geoAzimuthalEquidistant()
+      .scale(ARCTIC_R / (Math.PI / 2) * 2.75)   // full hemisphere fits in ARCTIC_R px
       .translate([w / 2, h / 2])
-      .rotate([0, -90])
-      .clipAngle(90);
+      .rotate([0, -90])                   // North Pole at centre
+      .clipAngle(DEG_TO_SHOW);
 
     const tempPath = d3.geoPath().projection(tempProj);
 
+    const tempSvg = d3.select("#temp-map-container")
+      .append("svg")
+      .attr("width",  w)
+      .attr("height", h)
+      .attr("viewBox", `0 0 ${w} ${h}`);
+
+    // Ocean background circle
     tempSvg.append("circle")
-      .attr("class", "globe-sphere")
-      .attr("cx", w / 2).attr("cy", h / 2).attr("r", r * 2.0);
+      .attr("cx", w / 2).attr("cy", h / 2).attr("r", ARCTIC_R)
+      .style("fill", "#071525")
+      .style("filter", "drop-shadow(0 0 40px rgba(78,184,255,0.15))");
 
-    tempSvg.append("path")
-      .datum(d3.geoGraticule()())
-      .attr("class", "graticule-polar")
-      .attr("d", tempPath);
+    // Clip path so nothing renders outside the circle
+    const defs = tempSvg.append("defs");
+    defs.append("clipPath").attr("id", "arctic-clip")
+      .append("circle")
+      .attr("cx", w / 2).attr("cy", h / 2).attr("r", ARCTIC_R);
+    defs.append("clipPath").attr("id", "ice-mask-clip")
+      .append("path")
+      .attr("id", "ice-mask-path");
 
-    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
+    const mapGroup = tempSvg.append("g").attr("clip-path", "url(#arctic-clip)");
+
+    // Use countries-110m.json — has both 'land' and 'countries' objects
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
       .then(world => {
-        tempSvg.append("path")
+        // Layer order (SVG bottom → top):
+        // 1) Choropleth cells — clipped to the circle boundary
+        const cellGroup = mapGroup.append("g")
+          .attr("id", "choropleth-cells")
+          .attr("clip-path", "url(#ice-mask-clip)");
+
+        // 2) Land — semi-transparent so choropleth cells show through
+        mapGroup.append("path")
           .datum(topojson.feature(world, world.objects.land))
-          .attr("class", "land")
-          .style("fill", "rgba(30, 41, 59, 0.4)")
+          .style("fill", "rgba(30,58,24,0.5)")
+          .style("stroke", "rgba(255,255,255,0.5)")
+          .style("stroke-width", "0.8px")
           .attr("d", tempPath);
-          
-        loadTemperatureData(tempSvg, tempProj);
-      });
+
+        // 3) Country borders
+        mapGroup.append("path")
+          .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
+          .style("fill", "none")
+          .style("stroke", "rgba(255,255,255,0.25)")
+          .style("stroke-width", "0.4px")
+          .attr("d", tempPath);
+
+        // 4) Graticule
+        const grat = d3.geoGraticule().step([30, 10]);
+        mapGroup.append("path")
+          .datum(grat())
+          .attr("class", "graticule")
+          .attr("d", tempPath);
+
+        loadTemperatureData(cellGroup, tempProj, tempPath, w, h);
+      })
+      .catch(err => console.error("❌ World atlas failed:", err));
   }
 
-  function loadTemperatureData(svg, proj) {
-    d3.json("arctic_temp_anomaly.json")
+  function loadTemperatureData(cellGroup, proj, pathGen, w, h) {
+    d3.json("downsampled_arctic_data_1980_onwards.json")
       .then(data => {
         if (!data || data.length === 0) return;
-        
-        // Color scale for extreme heating up to +16C (1980 vs 2100)
-        const colorScale = d3.scaleSequential(d3.interpolateInferno).domain([0, 16]);
-        
-        // Convert to GeoJSON FeatureCollection
-        const geoData = {
-          type: "FeatureCollection",
-          features: data.map(d => ({
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [d.lon, d.lat] },
-            properties: { delta: d.delta }
-          }))
-        };
+        console.log("✅ Temperature data loaded:", data.length, "points");
 
-        const pointPath = d3.geoPath().projection(proj).pointRadius(4);
+        const colorScale = d3.scaleLinear()
+          .domain([-20, -10, 0, 5, 10])
+          .range(["#ffffff", "#c8e6ff", "#ffddaa", "#ff6b30", "#cc0000"])
+          .clamp(true);
 
-        svg.selectAll(".temp-cell")
-          .data(geoData.features)
-          .enter()
-          .append("path")
-          .attr("class", "temp-cell")
-          .attr("d", pointPath)
-          .style("fill", d => colorScale(d.properties.delta))
-          .style("opacity", 0.85);
-          
-        const legend = d3.select("#temp-map-container").append("div").attr("class", "temp-legend");
+        const years = [...new Set(data.map(d => d.year))].sort((a, b) => a - b);
+        const displayYears = years;
+        let currentYear = displayYears[0];
+
+        async function updateIceClip(year) {
+          const maskYear = 1980;
+
+          const ice = await d3.json(`${maskYear}.json`);
+          const converted = convert3413toWGS84(ice);
+
+          const merged = converted.type === "FeatureCollection"
+            ? featureCollectionToMultiPolygon(converted)
+            : converted;
+
+          // 중요: D3가 polygon을 지구 반대쪽으로 해석하는 것 방지
+          if (merged.geometry && merged.geometry.type === "MultiPolygon") {
+            merged.geometry.coordinates.forEach(poly => {
+              const dummy = { type: "Polygon", coordinates: poly };
+              if (d3.geoArea(dummy) > 2 * Math.PI) {
+                poly.forEach(ring => ring.reverse());
+              }
+            });
+          }
+
+          d3.select("#ice-mask-path")
+            .datum(merged)
+            .attr("d", pathGen);
+        }
+
+        // Project each lon/lat point to SVG pixel coords and draw circles.
+        // Circles are rotation-agnostic so they look correct on any polar projection.
+        async function drawYear(year) {
+          await updateIceClip(year);
+
+          const yearData = data.filter(d => d.year === year);
+
+          const pA = proj([0, 75]);
+          const pB = proj([5, 75]);
+          const pC = proj([0, 75]);
+          const pD = proj([0, 78.77]);
+
+          const rW = pA && pB ? Math.hypot(pB[0]-pA[0], pB[1]-pA[1]) / 2 + 1 : 6;
+          const rH = pC && pD ? Math.hypot(pD[0]-pC[0], pD[1]-pC[1]) / 2 + 1 : 6;
+          const r = Math.max(rW, rH);
+
+          const projected = yearData.map(d => {
+            const lon = d.lon > 180 ? d.lon - 360 : d.lon;
+            const xy = proj([lon, d.lat]);
+            if (!xy) return null;
+            return { xy, temp: d.temp_absolute };
+          }).filter(Boolean);
+
+          cellGroup.selectAll(".temp-cell")
+            .data(projected)
+            .join("rect")
+            .attr("class", "temp-cell")
+            .attr("x", d => d.xy[0] - r)
+            .attr("y", d => d.xy[1] - r)
+            .attr("width", r * 2)
+            .attr("height", r * 2)
+            .style("fill", d => colorScale(d.temp))
+            .style("opacity", 0.72)
+            .style("stroke", "none");
+        }
+
+        drawYear(currentYear);
+
+        // const svgEl = d3.select("#temp-map-container svg");
+        // svgEl.append("text")
+        //   .attr("id", "temp-year-text")
+        //   .attr("x", 44).attr("y", 66)
+        //   .style("font-family", "var(--serif)")
+        //   .style("font-size",   "3.2rem")
+        //   .style("font-weight", "900")
+        //   .style("fill", "#ffffff")
+        //   .text(currentYear);
+
+        const slider = document.getElementById("year-slider");
+        const yearDisplay = document.getElementById("temp-year-display");
+        if (slider) {
+          slider.min   = 0;
+          slider.max   = displayYears.length - 1;
+          slider.step  = 1;
+          slider.value = 0;
+          slider.addEventListener("input", function () {
+            currentYear = displayYears[+this.value];
+            if (yearDisplay) yearDisplay.textContent = currentYear;
+            // svgEl.select("#temp-year-text").text(currentYear);
+            drawYear(currentYear);
+          });
+        }
+        if (yearDisplay) yearDisplay.textContent = currentYear;
+
+        const wrapper = d3.select("#temp-map-container");
+        const legend  = wrapper.append("div").attr("class", "temp-legend");
         legend.html(`
-          <div style="font-weight: bold; margin-bottom: 8px;">Temperature Change (°C)</div>
-          <div class="legend-gradient" style="background: linear-gradient(to right, ${colorScale(0)}, ${colorScale(8)}, ${colorScale(16)})"></div>
-          <div class="legend-labels">
-            <span>0°</span>
-            <span>+8°</span>
-            <span>+16°</span>
+          <div style="font-weight:bold;margin-bottom:6px;color:#fff;">
+            Polar Bear Heat Comfort
+          </div>
+          <div class="stress-gradient"></div>
+          <div class="stress-labels">
+            <span>−20°C</span>
+            <span>-10°C</span>
+            <span>0°C</span>
+            <span>5°C</span>
+            <span>10°C</span>
+          </div>
+          <div class="stress-note">
+            White = safe cold · Orange = stress · Red = danger
           </div>
         `);
       })
-      .catch(err => console.log("Waiting for temperature data...", err));
+      .catch(err => console.error("❌ Could not load Arctic temperature data:", err));
   }
-  
+
   initTemperatureMap();
 
 })();
