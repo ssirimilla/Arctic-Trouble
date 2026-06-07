@@ -315,9 +315,9 @@
     defs.append("clipPath").attr("id", "arctic-clip")
       .append("circle")
       .attr("cx", w / 2).attr("cy", h / 2).attr("r", ARCTIC_R);
-    defs.append("clipPath").attr("id", "ice-mask-clip")
-      .append("path")
-      .attr("id", "ice-mask-path");
+    // defs.append("clipPath").attr("id", "ice-mask-clip")
+    //   .append("path")
+    //   .attr("id", "ice-mask-path");
 
     const mapGroup = tempSvg.append("g").attr("clip-path", "url(#arctic-clip)");
 
@@ -327,22 +327,23 @@
         // Layer order (SVG bottom → top):
         // 1) Choropleth cells
         const cellGroup = mapGroup.append("g")
-          .attr("id", "choropleth-cells");
+          .attr("id", "choropleth-cells")
+          .attr("clip-path", "url(#arctic-clip)");
 
-        // 2) Land — opaque to hide choropleth cells over land
+        // 2) Land outline only — do NOT cover temperature
         mapGroup.append("path")
           .datum(topojson.feature(world, world.objects.land))
-          .style("fill", "#1e3a18")
-          .style("stroke", "rgba(255,255,255,0.5)")
-          .style("stroke-width", "0.8px")
+          .style("fill", "none")
+          .style("stroke", "rgba(5, 15, 25, 0.85)")
+          .style("stroke-width", "1.3px")
           .attr("d", tempPath);
 
-        // 3) Country borders
+        // 3) Country borders — make clear
         mapGroup.append("path")
           .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
           .style("fill", "none")
-          .style("stroke", "rgba(255,255,255,0.25)")
-          .style("stroke-width", "0.4px")
+          .style("stroke", "rgba(5, 15, 25, 0.7)")
+          .style("stroke-width", "0.9px")
           .attr("d", tempPath);
 
         // 4) Graticule
@@ -352,7 +353,7 @@
           .attr("class", "graticule")
           .attr("d", tempPath);
 
-        loadTemperatureData(cellGroup, tempProj, tempPath, w, h);
+          loadTemperatureData(cellGroup, tempProj, tempPath, w, h);
       })
       .catch(err => console.error("❌ World atlas failed:", err));
   }
@@ -399,9 +400,7 @@
 
         // Project each lon/lat point to SVG pixel coords and draw circles.
         // Circles are rotation-agnostic so they look correct on any polar projection.
-        async function drawYear(year) {
-          await updateIceClip(year);
-
+        function drawYear(year) {
           const yearData = data.filter(d => d.year === year);
 
           const pA = proj([0, 75]);
@@ -409,9 +408,8 @@
           const pC = proj([0, 75]);
           const pD = proj([0, 78.77]);
 
-          const rW = pA && pB ? Math.hypot(pB[0]-pA[0], pB[1]-pA[1]) / 2 + 1 : 6;
-          const rH = pC && pD ? Math.hypot(pD[0]-pC[0], pD[1]-pC[1]) / 2 + 1 : 6;
-          const r = Math.max(rW, rH);
+          const cellW = pA && pB ? Math.abs(pB[0] - pA[0]) + 2 : 10;
+          const cellH = pC && pD ? Math.abs(pD[1] - pC[1]) + 2 : 10;
 
           const projected = yearData.map(d => {
             const lon = d.lon > 180 ? d.lon - 360 : d.lon;
@@ -422,14 +420,13 @@
 
           cellGroup.selectAll(".temp-cell")
             .data(projected)
-            .join("rect")
+            .join("circle")
             .attr("class", "temp-cell")
-            .attr("x", d => d.xy[0] - r)
-            .attr("y", d => d.xy[1] - r)
-            .attr("width", r * 2)
-            .attr("height", r * 2)
+            .attr("cx", d => d.xy[0])
+            .attr("cy", d => d.xy[1])
+            .attr("r", 28)
             .style("fill", d => colorScale(d.temp))
-            .style("opacity", 0.72)
+            .style("opacity", 0.55)
             .style("stroke", "none");
         }
 
