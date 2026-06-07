@@ -17,6 +17,8 @@
   --text-main:  #cfe4f7;
   --text-muted: #6a8fad;
   --danger:     #ff6b4a;
+  --orange:     #ff9f43;
+  --blue:       #4caf50;
   --gold:       #f0c060;
   --serif:      'Playfair Display', Georgia, serif;
   --sans:       'DM Sans', system-ui, sans-serif;
@@ -43,11 +45,12 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 8vh 6vw;
   overflow: hidden;
-  background: radial-gradient(ellipse 80% 60% at 50% 40%, #0a2040 0%, var(--ocean) 70%);
+  background: url('bear.jpg') center/cover no-repeat;
 }
 
 .hero-stars {
@@ -94,11 +97,11 @@ body {
 
 .hero-label {
   font-family: var(--sans);
-  font-size: 0.75rem;
+  font-size: 1.0rem;
   font-weight: 500;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #060f1a;
   margin-bottom: 1.2rem;
   opacity: 0;
   animation: fade-up 1s var(--ease-smooth) 0.3s forwards;
@@ -123,9 +126,9 @@ body {
 
 .hero-sub {
   font-size: clamp(1rem, 2vw, 1.25rem);
-  color: var(--text-muted);
+  color: #000000;
   max-width: 520px;
-  margin: 1.5rem auto 0;
+  margin: 1.5rem 0 0 0;
   font-weight: 300;
   opacity: 0;
   animation: fade-up 1s var(--ease-smooth) 0.9s forwards;
@@ -204,6 +207,8 @@ body {
   position: relative;
 }
 
+
+
 /* subtle polar glow behind the globe */
 #map-container::before {
   content: '';
@@ -250,7 +255,10 @@ body {
   color: var(--text-muted);
   letter-spacing: 0.05em;
   transition: all 0.6s var(--ease-smooth);
+  text-align: center;
 }
+
+
 
 .extent-value {
   font-family: var(--serif);
@@ -476,7 +484,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8rem 5%;
+  padding: 4rem 8%;
   background: linear-gradient(180deg, #090e17 0%, #0f172a 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -490,7 +498,7 @@ body {
 .temp-content h2 {
   font-family: 'Playfair Display', serif;
   font-size: 3rem;
-  color: var(--text-primary);
+  color: #ffffff;
   margin-bottom: 1.5rem;
 }
 
@@ -624,27 +632,30 @@ body {
 #outro {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 10vh 8%;
+  padding: 4rem 8%;
   text-align: center;
   border-top: 1px solid rgba(78, 184, 255, 0.1);
 }
 
 #outro h2 {
-  font-family: var(--serif);
+  font-family: 'Playfair Display', serif;
   font-size: clamp(2rem, 5vw, 3.5rem);
-  color: #fff;
+  color: #ffffff;
   margin-bottom: 1.5rem;
 }
 
 #outro p {
-  font-size: 1.1rem;
-  color: var(--text-muted);
-  max-width: 620px;
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  max-width: 800px;
   margin: 0 auto;
   font-weight: 300;
   line-height: 1.8;
 }
-
+#outro p strong {
+  font-weight: 900;
+  color:#20f9fd;
+}
 .source-note {
   margin-top: 4rem;
   font-size: 0.75rem;
@@ -784,4 +795,233 @@ body {
   color: var(--text-muted);
   max-width: 220px;
   line-height: 1.4;
+}
+
+/* ── Section 3: Wrangel National Park Banner ────────── */
+#wrangel {
+  position: relative;
+  width: 100%;
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 8%;
+  background: linear-gradient(rgba(10, 15, 25, 0.4), rgba(10, 15, 25, 0.7)), url('wrangel.jpg') center/cover no-repeat;
+  background-attachment: fixed;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.wrangel-hero {
+  max-width: 800px;
+}
+
+.wrangel-hero h2 {
+  font-family: var(--serif);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.wrangel-description-placeholder {
+  font-size: 1.25rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 300;
+}
+
+/* ── Section 4: Seasonal Graphs ────────── */
+#wrangel-data {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 4rem;
+  padding: 4rem 8%;
+  background: var(--bg);
+}
+
+@media (max-width: 900px) {
+  #wrangel-data {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 6rem 5%;
+  }
+}
+
+#wrangel-graph-container {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  width: 100%;
+  max-width: 600px;
+}
+
+.graph-title {
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+#wrangel-graph {
+  width: 100%;
+  height: 300px;
+}
+
+.graph-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* D3 Graph SVG Styles */
+.line-path {
+  fill: none;
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+.graph-axis path,
+.graph-axis line {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.graph-axis text {
+  fill: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+}
+
+.data-dot {
+  stroke: var(--bg);
+  stroke-width: 2px;
+  transition: r 0.2s;
+}
+
+.data-dot:hover {
+  r: 6;
+  fill: var(--gold) !important;
+}
+
+.wrangel-content {
+  background: var(--card-bg);
+  padding: 3.5rem;
+  border-radius: 16px;
+  max-width: 700px;
+  border-left: 4px solid var(--accent);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(78, 184, 255, 0.08);
+}
+
+.wrangel-content h2 {
+  font-family: var(--serif);
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.2rem;
+}
+
+.wrangel-content p {
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: var(--text-main);
+  font-weight: 300;
+}
+
+.wrangel-content p strong {
+  font-weight: 900;
+  color:#20f9fd;
+}
+
+
+/* ARTICLE CARds */
+
+.sources-section {
+max-width: 1200px;
+margin: 5rem auto;
+padding: 0 2rem;
+}
+
+.sources-section h2 {
+text-align: center;
+margin-bottom: 2rem;
+font-size: 2rem;
+}
+
+.article-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+gap: 1.5rem;
+}
+
+.article-card {
+display: flex;
+flex-direction: column;
+text-decoration: none;
+color: inherit;
+
+padding: 1.5rem;
+border-radius: 16px;
+
+background: rgba(255,255,255,0.05);
+border: 1px solid rgba(255,255,255,0.1);
+
+transition: transform 0.25s ease,
+box-shadow 0.25s ease;
+}
+
+.article-card:hover {
+transform: translateY(-6px);
+box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.source {
+font-size: 0.8rem;
+font-weight: 700;
+letter-spacing: 1px;
+opacity: 0.7;
+margin-bottom: 0.75rem;
+}
+
+.article-card h3 {
+margin: 0 0 1rem;
+line-height: 1.3;
+}
+
+.article-card p {
+flex-grow: 1;
+line-height: 1.6;
+opacity: 0.85;
+}
+
+.read-more {
+margin-top: 1rem;
+font-weight: 600;
 }

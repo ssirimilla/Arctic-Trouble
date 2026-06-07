@@ -44,6 +44,8 @@
     .attr("height", H)
     .attr("viewBox", `0 0 ${W} ${H}`);
 
+  const mapGroup = svg.append("g");
+
   /* ── Projection: orthographic, North Pole centred ────────── */
   const projection = d3.geoOrthographic()
     .scale(R_ZOOM)
@@ -66,10 +68,10 @@
     .attr("class", "graticule-polar").attr("d", path);
 
   /* ── State ───────────────────────────────────────────────── */
-  let icePath      = null;  // SVG <path> element
-  let baselinePath = null;  // SVG <path> element for 1980 baseline
-  let iceGeoJSON   = null;  // current GeoJSON driving the ice (for rotate loop)
-  const geoCache   = {};
+  const geoData = []; // Preloaded GeoJSONs
+  let icePaths = [];  // SVG <path> elements per step
+  let baselinePath = null;
+  let isReady = false;
 
   /* ── Coordinate Converter ────────────────────────────────── */
   function convert3413toWGS84(geojson) {
@@ -112,98 +114,131 @@
     return d3.geoCircle().center([0, 90]).radius(radius)();
   }
 
-  /**
-   * Flatten a FeatureCollection of Polygons into a single MultiPolygon.
-   * This is crucial — drawing 78 separate paths causes the criss-cross
-   * artefact because D3 connects outer rings across the projection boundary.
-   */
   function featureCollectionToMultiPolygon(fc) {
     const polygons = [];
-
     (fc.features || []).forEach(feat => {
       const geom = feat && feat.geometry;
       if (!geom) return;
-
       if (geom.type === "Polygon") {
         polygons.push(geom.coordinates);
       } else if (geom.type === "MultiPolygon") {
         polygons.push(...geom.coordinates);
       }
     });
-
     return {
       type: "Feature",
-      geometry: {
-        type: "MultiPolygon",
-        coordinates: polygons
-      },
+      geometry: { type: "MultiPolygon", coordinates: polygons },
       properties: {}
     };
   }
 
-  function transitionIce(geojson) {
-    if (!icePath) return;
-    
-    // Instead of morphing the path (which causes tearing), we fade out, swap data, and fade in
-    icePath.transition()
-      .duration(400)
-      .style("opacity", 0)
-      .on("end", function() {
-        iceGeoJSON = geojson;
-        d3.select(this)
-          .datum(geojson)
-          .attr("d", path)
-          .transition()
-          .duration(600)
-          .style("opacity", 1);
-      });
+  /* ── Interpolation Helpers ───────────────────────────────── */
+  function lerp(start, end, t) {
+    return start * (1 - t) + end * t;
   }
 
-  function updateDisplay(step) {
-    yearLabel.textContent = step.year;
-    extentNum.textContent = step.extent.toFixed(1);
-    lossBar.style.width   = step.loss + "%";
-    lossPct.textContent   = step.loss + "%";
+  function updateDisplayInterpolated(step1, step2, t) {
+    if (!step2) {
+      yearLabel.textContent = step1.year;
+      extentNum.textContent = step1.extent.toFixed(1);
+      lossBar.style.width   = step1.loss + "%";
+      lossPct.textContent   = step1.loss + "%";
+      return;
+    }
+    
+    const currentYear = Math.round(lerp(parseInt(step1.year), parseInt(step2.year), t));
+    const currentExtent = lerp(step1.extent, step2.extent, t);
+    const currentLoss = lerp(step1.loss, step2.loss, t);
+
+    yearLabel.textContent = currentYear;
+    extentNum.textContent = currentExtent.toFixed(1);
+    lossBar.style.width   = currentLoss + "%";
+    lossPct.textContent   = Math.round(currentLoss) + "%";
+
     yearLabel.style.color =
-      step.year === "2012" ? "var(--danger)"
-      : step.year === "2024" ? "var(--gold)"
+      currentYear >= 2024 ? "var(--gold)"
+      : currentYear >= 2012 ? "var(--danger)"
       : "#fff";
   }
 
-  function loadAndTransition(stepData) {
-    updateDisplay(stepData);
+  /* ── Scroll Loop ─────────────────────────────────────────── */
+  function onScroll() {
+    if (!isReady) return;
 
-    // Baseline path logic
-    if (baselinePath && geoCache["1980.json"]) {
-      if (stepData.year === "1980") {
-        baselinePath.transition().duration(600).style("opacity", 0);
+    const containerRect = document.getElementById("scrolly-container").getBoundingClientRect();
+    const stickyHeight = document.querySelector(".sticky-visual").clientHeight;
+    
+    const scrollableDistance = containerRect.height - stickyHeight;
+    let scrolled = -containerRect.top;
+    
+    scrolled = Math.max(0, Math.min(scrolled, scrollableDistance));
+    
+    const progress = scrollableDistance > 0 ? scrolled / scrollableDistance : 0;
+    
+    const numSegments = STEPS.length - 1;
+    const segmentProgress = progress * numSegments;
+    const currentIdx = Math.min(Math.floor(segmentProgress), numSegments - 1);
+    const t = segmentProgress - currentIdx; 
+
+    const step1 = STEPS[currentIdx];
+    const step2 = STEPS[currentIdx + 1] || STEPS[currentIdx];
+
+    updateDisplayInterpolated(step1, step2, t);
+
+    icePaths.forEach((pathNode, i) => {
+      if (i === currentIdx) {
+        pathNode.style("opacity", 1 - t);
+      } else if (i === currentIdx + 1) {
+        pathNode.style("opacity", t);
       } else {
-        baselinePath.datum(geoCache["1980.json"])
-          .attr("d", path)
-          .transition().duration(600).style("opacity", 1);
+        pathNode.style("opacity", 0);
+      }
+    });
+
+    if (baselinePath) {
+      if (currentIdx === 0) {
+         baselinePath.style("opacity", Math.min(1, t * 2)); 
+      } else {
+         baselinePath.style("opacity", 1);
       }
     }
 
-    if (geoCache[stepData.file]) {
-      transitionIce(geoCache[stepData.file]);
-      return;
-    }
+    const rotateBase = -90;
+    const currentRotation = rotateBase + progress * 40; 
+    projection.rotate([currentRotation, -90]);
+    
+    svg.selectAll(".graticule, .graticule-polar, .land, .ice, .baseline").attr("d", path);
 
-    d3.json(stepData.file)
-      .then(function (data) {
-        // Convert from EPSG:3413 to WGS84 so it wraps correctly on the globe
-        const projectedData = convert3413toWGS84(data);
-        
-        // Convert FeatureCollection → single MultiPolygon for clean rendering
-        const merged = (projectedData.type === "FeatureCollection")
-          ? featureCollectionToMultiPolygon(projectedData)
-          : projectedData;
+    steps.forEach((s, i) => {
+      if (i === (t > 0.5 ? currentIdx + 1 : currentIdx)) {
+        s.classList.add("is-active");
+      } else {
+        s.classList.remove("is-active");
+      }
+    });
+  }
 
-        // D3 spherical winding fix:
-        // Because the original Cartesian polygons might have clockwise winding,
-        // D3 might interpret them as spanning the entire globe.
-        // We detect this by checking if the spherical area > 2 * PI (a hemisphere),
-        // and if so, we reverse the coordinates of the rings.
+  /* ── Initialization ──────────────────────────────────────── */
+  Promise.all([
+    d3.json("https://unpkg.com/world-atlas@2/countries-110m.json"),
+    ...STEPS.map(s => d3.json(s.file).catch(() => null))
+  ]).then(function (results) {
+    const world = results[0];
+    const iceData = results.slice(1);
+
+    svg.append("path")
+      .datum(topojson.feature(world, world.objects.countries))
+      .attr("class", "land")
+      .attr("d", path);
+
+    STEPS.forEach((stepData, i) => {
+      let merged = null;
+      if (iceData[i]) {
+        const projected = convert3413toWGS84(iceData[i]);
+        merged = (projected.type === "FeatureCollection")
+          ? featureCollectionToMultiPolygon(projected)
+          : projected;
+
         if (merged.geometry && merged.geometry.type === "MultiPolygon") {
           merged.geometry.coordinates.forEach(poly => {
             const dummy = { type: "Polygon", coordinates: poly };
@@ -212,70 +247,33 @@
             }
           });
         }
-          
-        console.log("✅ Loaded and converted", stepData.file,
-          "→", merged.geometry.coordinates.length, "polygons");
-        geoCache[stepData.file] = merged;
+      } else {
+        merged = circleGeoJSON(stepData.radius);
+      }
+      geoData[i] = merged;
+    });
 
-        // Catch up the baseline display if we just loaded 1980 and we are on a different step
-        if (baselinePath && stepData.year !== "1980" && geoCache["1980.json"]) {
-           baselinePath.datum(geoCache["1980.json"]).attr("d", path).transition().duration(600).style("opacity", 1);
-        }
+    baselinePath = svg.append("path")
+      .attr("id", "baseline-path")
+      .attr("class", "baseline")
+      .datum(geoData[0])
+      .attr("d", path)
+      .style("opacity", 0);
 
-        transitionIce(merged);
-      })
-      .catch(function (err) {
-        console.warn("⚠️  Could not load", stepData.file, "— circle fallback.", err);
-        const fb = circleGeoJSON(stepData.radius);
-        geoCache[stepData.file] = fb;
-        transitionIce(fb);
-      });
-  }
-
-  /* ── Main ────────────────────────────────────────────────── */
-  d3.json("https://unpkg.com/world-atlas@2/countries-110m.json")
-    .then(function (world) {
-
-      // Land (below ice)
-      svg.append("path")
-        .datum(topojson.feature(world, world.objects.countries))
-        .attr("class", "land")
-        .attr("d", path);
-
-      // 1980 Baseline path (rendered below current ice so it forms an outline)
-      baselinePath = svg.append("path")
-        .attr("id", "baseline-path")
-        .attr("class", "baseline")
-        .style("opacity", 0);
-
-      // Ice path — one element, updated every step
-      const initialGeo = circleGeoJSON(STEPS[0].radius);
-      iceGeoJSON = initialGeo;
-      icePath = svg.append("path")
-        .attr("id", "ice-path")
+    STEPS.forEach((stepData, i) => {
+      const p = svg.append("path")
         .attr("class", "ice")
-        .datum(initialGeo)
-        .attr("d", path);
+        .datum(geoData[i])
+        .attr("d", path)
+        .style("opacity", i === 0 ? 1 : 0);
+      icePaths.push(p);
+    });
 
-      updateDisplay(STEPS[0]);
-      loadAndTransition(STEPS[0]);
+    isReady = true;
 
-      /* Intersection Observer */
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const year     = entry.target.getAttribute("data-year");
-          const stepData = STEPS.find((s) => s.year === year);
-          if (!stepData) return;
-          steps.forEach((s) => s.classList.remove("is-active"));
-          entry.target.classList.add("is-active");
-          loadAndTransition(stepData);
-        });
-      }, { rootMargin: "-45% 0px -45% 0px", threshold: 0 });
-
-      steps.forEach((step) => observer.observe(step));
-    })
-    .catch(err => console.error("World atlas load failed:", err));
+    window.addEventListener("scroll", () => requestAnimationFrame(onScroll));
+    onScroll();
+  }).catch(err => console.error("Initialization failed:", err));
 
   /* ── Temperature Map Initialization ───────────────────────── */
   /* ── Temperature Choropleth Map ─────────────────────────── */
@@ -327,15 +325,14 @@
     d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
       .then(world => {
         // Layer order (SVG bottom → top):
-        // 1) Choropleth cells — clipped to the circle boundary
+        // 1) Choropleth cells
         const cellGroup = mapGroup.append("g")
-          .attr("id", "choropleth-cells")
-          .attr("clip-path", "url(#ice-mask-clip)");
+          .attr("id", "choropleth-cells");
 
-        // 2) Land — semi-transparent so choropleth cells show through
+        // 2) Land — opaque to hide choropleth cells over land
         mapGroup.append("path")
           .datum(topojson.feature(world, world.objects.land))
-          .style("fill", "rgba(30,58,24,0.5)")
+          .style("fill", "#1e3a18")
           .style("stroke", "rgba(255,255,255,0.5)")
           .style("stroke-width", "0.8px")
           .attr("d", tempPath);
@@ -487,5 +484,119 @@
   }
 
   initTemperatureMap();
+
+  /* ── Seasonal Temperature Graphs ──────────────────────────── */
+  function drawSeasonalGraph() {
+    d3.json("wrangel_temps.json").then(data => {
+      const container = document.getElementById("wrangel-graph");
+      if (!container) return;
+
+      const margin = { top: 20, right: 20, bottom: 30, left: 40 },
+            width = container.clientWidth - margin.left - margin.right,
+            height = container.clientHeight - margin.top - margin.bottom;
+
+      const svg = d3.select("#wrangel-graph")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.Year))
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([
+          d3.min(data, d => Math.min(d.July, d.August, d.September)) - 1,
+          d3.max(data, d => Math.max(d.July, d.August, d.September)) + 1
+        ])
+        .range([height, 0]);
+
+      // Axes
+      const xAxis = d3.axisBottom(x).tickFormat(d3.format("d")).ticks(6);
+      svg.append("g")
+        .attr("class", "graph-axis")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis);
+
+      const yAxis = d3.axisLeft(y).ticks(5).tickFormat(d => d + "°C");
+      svg.append("g")
+        .attr("class", "graph-axis")
+        .call(yAxis);
+
+      // 0°C Reference line
+      svg.append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(0))
+        .attr("y2", y(0))
+        .style("stroke", "var(--text-muted)")
+        .style("stroke-dasharray", "4,4")
+        .style("opacity", 0.5);
+
+      // Create tooltip div if it doesn't exist
+      let tooltip = d3.select("#wrangel-graph-tooltip");
+      if (tooltip.empty()) {
+        tooltip = d3.select("body").append("div")
+          .attr("id", "wrangel-graph-tooltip")
+          .style("position", "absolute")
+          .style("background", "var(--card-bg)")
+          .style("color", "#fff")
+          .style("padding", "8px 12px")
+          .style("border-radius", "6px")
+          .style("pointer-events", "none")
+          .style("opacity", 0)
+          .style("box-shadow", "0 4px 12px rgba(0,0,0,0.5)")
+          .style("font-family", "var(--sans)")
+          .style("font-size", "0.9rem")
+          .style("z-index", "9999");
+      }
+
+      const drawLine = (key, color) => {
+        const lineGen = d3.line()
+          .x(d => x(d.Year))
+          .y(d => y(d[key]))
+          .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+          .datum(data)
+          .attr("class", "line-path")
+          .style("stroke", color)
+          .attr("d", lineGen);
+
+        svg.selectAll(`.data-dot-${key}`)
+          .data(data)
+          .enter().append("circle")
+          .attr("class", `data-dot data-dot-${key}`)
+          .attr("cx", d => x(d.Year))
+          .attr("cy", d => y(d[key]))
+          .attr("r", 5) // Slightly larger radius for easier hovering
+          .style("fill", color)
+          .style("cursor", "pointer")
+          .on("mouseover", function(event, d) {
+             d3.select(this).transition().duration(100).attr("r", 8).style("fill", "var(--gold)");
+             tooltip.transition().duration(100).style("opacity", 1);
+             tooltip.html(`<strong style="color:${color}">${key} ${d.Year}</strong><br/>${d[key].toFixed(2)}°C`);
+          })
+          .on("mousemove", function(event) {
+             tooltip.style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+          })
+          .on("mouseout", function(event, d) {
+             d3.select(this).transition().duration(200).attr("r", 5).style("fill", color);
+             tooltip.transition().duration(200).style("opacity", 0);
+          });
+      };
+
+      drawLine("July", "var(--orange)");
+      drawLine("August", "var(--danger)");
+      drawLine("September", "var(--blue)");
+
+    }).catch(err => console.error("Error loading seasonal temps:", err));
+  }
+
+  // Draw chart after a slight delay to ensure layout is complete
+  setTimeout(drawSeasonalGraph, 500);
 
 })();
