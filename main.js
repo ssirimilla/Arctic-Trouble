@@ -19,8 +19,7 @@
     { year: "2000", file: "2000.json", radius: 28, extent: 5.9, loss: 20 },
     { year: "2007", file: "2007.json", radius: 26, extent: 4.3, loss: 40 },
     { year: "2012", file: "2012.json", radius: 18, extent: 3.4, loss: 56 },
-    { year: "2019", file: "2019.json", radius: 20, extent: 4.1, loss: 47 },
-    { year: "2025", file: "2025.json", radius: 21, extent: 4.2, loss: 46 },
+    { year: "2020", file: "2020.json", radius: 20, extent: 3.9, loss: 50 },
   ];
 
   /* ── DOM refs ────────────────────────────────────────────── */
@@ -146,7 +145,10 @@
       return;
     }
     
-    const currentYear = Math.round(lerp(parseInt(step1.year), parseInt(step2.year), t));
+    // Jump the year exactly when the active text card changes
+    const activeStep = t > 0.5 ? step2 : step1;
+    const currentYear = parseInt(activeStep.year);
+
     const currentExtent = lerp(step1.extent, step2.extent, t);
     const currentLoss = lerp(step1.loss, step2.loss, t);
 
@@ -664,5 +666,118 @@
 
   // Draw chart after a slight delay to ensure layout is complete
   setTimeout(drawSeasonalGraph, 500);
+
+  /* ── Churchill Seasonal Temperature Graphs ────────────────── */
+  function drawChurchillSeasonalGraph() {
+    d3.json("churchill_temps.json").then(data => {
+      const container = document.getElementById("churchill-graph");
+      if (!container) return;
+
+      const margin = { top: 20, right: 20, bottom: 30, left: 40 },
+            width = container.clientWidth - margin.left - margin.right,
+            height = container.clientHeight - margin.top - margin.bottom;
+
+      const svg = d3.select("#churchill-graph")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.Year))
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([
+          d3.min(data, d => Math.min(d.September, d.October, d.November)) - 1,
+          d3.max(data, d => Math.max(d.September, d.October, d.November)) + 1
+        ])
+        .range([height, 0]);
+
+      // Axes
+      const xAxis = d3.axisBottom(x).tickFormat(d3.format("d")).ticks(6);
+      svg.append("g")
+        .attr("class", "graph-axis")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis);
+
+      const yAxis = d3.axisLeft(y).ticks(5).tickFormat(d => d + "°C");
+      svg.append("g")
+        .attr("class", "graph-axis")
+        .call(yAxis);
+
+      // 0°C Reference line
+      svg.append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(0))
+        .attr("y2", y(0))
+        .style("stroke", "var(--text-muted)")
+        .style("stroke-dasharray", "4,4")
+        .style("opacity", 0.5);
+
+      // Create tooltip div if it doesn't exist
+      let tooltip = d3.select("#churchill-graph-tooltip");
+      if (tooltip.empty()) {
+        tooltip = d3.select("body").append("div")
+          .attr("id", "churchill-graph-tooltip")
+          .style("position", "absolute")
+          .style("background", "var(--card-bg)")
+          .style("color", "#fff")
+          .style("padding", "8px 12px")
+          .style("border-radius", "6px")
+          .style("pointer-events", "none")
+          .style("opacity", 0)
+          .style("box-shadow", "0 4px 12px rgba(0,0,0,0.5)")
+          .style("font-family", "var(--sans)")
+          .style("font-size", "0.9rem")
+          .style("z-index", "9999");
+      }
+
+      const drawLine = (key, color) => {
+        const lineGen = d3.line()
+          .x(d => x(d.Year))
+          .y(d => y(d[key]))
+          .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+          .datum(data)
+          .attr("class", "line-path")
+          .style("stroke", color)
+          .attr("d", lineGen);
+
+        svg.selectAll(`.data-dot-churchill-${key}`)
+          .data(data)
+          .enter().append("circle")
+          .attr("class", `data-dot data-dot-churchill-${key}`)
+          .attr("cx", d => x(d.Year))
+          .attr("cy", d => y(d[key]))
+          .attr("r", 5) // Slightly larger radius for easier hovering
+          .style("fill", color)
+          .style("cursor", "pointer")
+          .on("mouseover", function(event, d) {
+             d3.select(this).transition().duration(100).attr("r", 8).style("fill", "var(--gold)");
+             tooltip.transition().duration(100).style("opacity", 1);
+             tooltip.html(`<strong style="color:${color}">${key} ${d.Year}</strong><br/>${d[key].toFixed(2)}°C`);
+          })
+          .on("mousemove", function(event) {
+             tooltip.style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+          })
+          .on("mouseout", function(event, d) {
+             d3.select(this).transition().duration(200).attr("r", 5).style("fill", color);
+             tooltip.transition().duration(200).style("opacity", 0);
+          });
+      };
+
+      drawLine("September", "var(--orange)");
+      drawLine("October", "var(--danger)");
+      drawLine("November", "var(--blue)");
+
+    }).catch(err => console.error("Error loading churchill seasonal temps:", err));
+  }
+
+  setTimeout(drawChurchillSeasonalGraph, 500);
 
 })();
