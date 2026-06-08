@@ -369,6 +369,19 @@
           .range(["#ffffff", "#c8e6ff", "#ffddaa", "#ff6b30", "#cc0000"])
           .clamp(true);
 
+        const tooltip = d3.select("body")
+          .append("div")
+          .attr("id", "temp-tooltip")
+          .style("position", "absolute")
+          .style("background", "rgba(10,15,25,0.95)")
+          .style("color", "#fff")
+          .style("padding", "8px 12px")
+          .style("border-radius", "8px")
+          .style("pointer-events", "none")
+          .style("opacity", 0)
+          .style("font-size", "0.85rem")
+          .style("z-index", "9999");
+
         const years = [...new Set(data.map(d => d.year))].sort((a, b) => a - b);
         const displayYears = years;
         let currentYear = displayYears[0];
@@ -415,7 +428,7 @@
             const lon = d.lon > 180 ? d.lon - 360 : d.lon;
             const xy = proj([lon, d.lat]);
             if (!xy) return null;
-            return { xy, temp: d.temp_absolute };
+            return { xy, temp: d.temp_absolute, lat: d.lat, lon: lon };
           }).filter(Boolean);
 
           cellGroup.selectAll(".temp-cell")
@@ -424,11 +437,67 @@
             .attr("class", "temp-cell")
             .attr("cx", d => d.xy[0])
             .attr("cy", d => d.xy[1])
-            .attr("r", 28)
+            .attr("r", 27)
             .style("fill", d => colorScale(d.temp))
             .style("opacity", 0.55)
-            .style("stroke", "none");
-        }
+            .style("stroke", "none")
+
+            .on("mouseover", function(event, d) {
+
+              d3.select(this).raise()
+                .style("stroke", "#071525")
+                .style("stroke-width", 3)
+                .style("opacity", 1);
+
+              tooltip
+                .style("opacity", 1)
+                .html(`
+                  <strong>${currentYear}</strong><br>
+                  Temp: ${d.temp.toFixed(1)}°C<br>
+                  Lat: ${d.lat.toFixed(1)}°<br>
+                  Lon: ${d.lon.toFixed(1)}°
+                `);
+            })
+
+            .on("mousemove", function(event) {
+              tooltip
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 20) + "px");
+            })
+
+            .on("mouseout", function() {
+
+              d3.select(this)
+                .style("stroke", "none")
+                .style("opacity", 0.55);
+
+
+              tooltip
+                .style("opacity", 0);
+            });
+          }
+
+          // const projected = yearData.map(d => {
+          //   const lon = d.lon > 180 ? d.lon - 360 : d.lon;
+          //   const xy = proj([lon, d.lat]);
+          //   if (!xy) return null;
+          //   return { xy, temp: d.temp_absolute, lat: d.lat };
+          // }).filter(Boolean);
+
+          // cellGroup.selectAll(".temp-cell")
+          //   .data(projected)
+          //   .join("circle")
+          //   .attr("class", "temp-cell")
+          //   .attr("cx", d => d.xy[0])
+          //   .attr("cy", d => d.xy[1])
+          //   .attr("r", d => {
+          //     const distFromCenter = Math.hypot(d.xy[0] - w / 2, d.xy[1] - h / 2);
+          //     return Math.max(12, 25 - distFromCenter * 0.018);
+          //   })
+          //   .style("fill", d => colorScale(d.temp))
+          //   .style("opacity", 0.6)
+          //   .style("stroke", "none");
+          // }
 
         drawYear(currentYear);
 

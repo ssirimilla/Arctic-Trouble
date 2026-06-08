@@ -576,8 +576,9 @@ body {
 
 .year-display {
   position: absolute;
-  top: 28px;
-  left: 40px;
+  top: auto;
+  left: 55px;
+  bottom: 40px;
   z-index: 5;
 
   font-family: 'Playfair Display', serif;
