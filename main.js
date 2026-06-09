@@ -640,6 +640,19 @@
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
+      svg.append("defs")
+        .append("marker")
+        .attr("id", "rapid-warming-arrow")
+        .attr("viewBox", "0 0 10 10")
+        .attr("refX", 9)
+        .attr("refY", 5)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M 0 0 L 10 5 L 0 10 z")
+        .style("fill", "var(--gold)");
+
       const x = d3.scaleLinear()
         .domain(d3.extent(data, d => d.Year))
         .range([0, width]);
@@ -672,6 +685,73 @@
         .style("stroke", "var(--text-muted)")
         .style("stroke-dasharray", "4,4")
         .style("opacity", 0.5);
+
+      // ── Polar bear comfort ceiling (5°C) ──────────────────
+      svg.append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(5))
+        .attr("y2", y(5))
+        .style("stroke", "#ff6b4a")
+        .style("stroke-dasharray", "6 3")
+        .style("stroke-width", 1.5)
+        .style("opacity", 0.8);
+
+      svg.append("text")
+        .attr("x", 5)
+        .attr("y", y(5) - 6)
+        .attr("text-anchor", "start")
+        .style("fill", "#ff6b4a")
+        .style("font-family", "var(--sans)")
+        .style("font-size", "0.58rem")
+        .style("font-weight", "500")
+        .text("Polar Bear Heat Threshold (5°C)");
+
+      // ── Steep climb annotation (points to post-2060 rise) ─
+      const climbX = x(2080);
+      const climbY = y(12);
+
+      svg.append("line")
+        .attr("x1", climbX - 40)
+        .attr("y1", climbY - 30)
+        .attr("x2", climbX)
+        .attr("y2", climbY)
+        .attr("marker-end", "url(#rapid-warming-arrow)")
+        .style("stroke", "var(--gold)")
+        .style("stroke-width", 1.2)
+        .style("stroke-dasharray", "3 2");
+
+      const climbLabelX = climbX - 44;
+      const climbLabelY = climbY - 34;
+
+      svg.append("rect")
+        .attr("x", climbLabelX - 138)
+        .attr("y", climbLabelY - 16)
+        .attr("width", 185)
+        .attr("height", 36)
+        .attr("rx", 6)
+        .style("fill", "rgba(10, 15, 25, 0.88)")
+        .style("stroke", "var(--gold)")
+        .style("stroke-width", 0.8);
+
+      svg.append("text")
+        .attr("x", climbLabelX - 130)
+        .attr("y", climbLabelY - 2)
+        .style("fill", "var(--gold)")
+        .style("font-family", "var(--sans)")
+        .style("font-size", "0.68rem")
+        .style("font-weight", "700")
+        .style("letter-spacing", "0.08em")
+        .text("RAPID WARMING POST-2060");
+
+      svg.append("text")
+        .attr("x", climbLabelX - 130)
+        .attr("y", climbLabelY + 13)
+        .style("fill", "#cfe4f7")
+        .style("font-family", "var(--sans)")
+        .style("font-size", "0.65rem")
+        .style("font-weight", "300")
+        .text("Temperatures climb past safe levels");
 
       // Create tooltip div if it doesn't exist
       let tooltip = d3.select("#wrangel-graph-tooltip");

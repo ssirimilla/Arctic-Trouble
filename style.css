@@ -528,6 +528,11 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.temp-content p strong {
+  font-weight: 900;
+  color:#20f9fd;
+}
+
 /* #temp-map-container {
   width: 100%;
   max-width: 800px;
@@ -672,10 +677,19 @@ body {
   font-weight: 300;
   line-height: 1.8;
 }
+
+.lead-sentence {
+  display: inline;
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+}
+
 #outro p strong {
   font-weight: 900;
   color:#20f9fd;
 }
+
 .source-note {
   margin-top: 4rem;
   font-size: 0.75rem;
