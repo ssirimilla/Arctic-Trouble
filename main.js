@@ -463,7 +463,7 @@
                   Lat: ${d.lat.toFixed(1)}°<br>
                   Lon: ${d.lon.toFixed(1)}°
                 `);
-})
+            })
 
             .on("mousemove", function(event) {
               tooltip
@@ -478,6 +478,75 @@
 
               tooltip.style("opacity", 0);
             });
+
+            // ── 2070 Annotation ──────────────────────────────────────
+            const svgEl = d3.select("#temp-map-container svg");
+            svgEl.selectAll(".annotation-2070").remove();
+
+            if (year >= 2070) {
+              const annGroup = svgEl.append("g").attr("class", "annotation-2070");
+
+              const cx = w / 2 + 30;
+              const cy = h / 2 - 20;
+              const lx = w / 2 + 160;
+              const ly = h / 2 - 130;
+
+              annGroup.append("line")
+                .attr("x1", cx).attr("y1", cy)
+                .attr("x2", lx).attr("y2", ly)
+                .style("stroke", "#ff6b4a")
+                .style("stroke-width", 1.5)
+                .style("stroke-dasharray", "4 3")
+                .style("opacity", 0.9);
+
+              annGroup.append("circle")
+                .attr("cx", cx).attr("cy", cy)
+                .attr("r", 4)
+                .style("fill", "#ff6b4a")
+                .style("opacity", 0.95);
+
+              const labelW = 240;
+              const labelH = 70;
+              annGroup.append("rect")
+                .attr("x", lx - 6)
+                .attr("y", ly - labelH)
+                .attr("width", labelW)
+                .attr("height", labelH)
+                .attr("rx", 8)
+                .style("fill", "rgba(10, 15, 25, 0.88)")
+                .style("stroke", "#ff6b4a")
+                .style("stroke-width", 1)
+                .style("opacity", 0.95);
+
+              annGroup.append("text")
+                .attr("x", lx + 4)
+                .attr("y", ly - labelH + 20)
+                .style("fill", "#ff6b4a")
+                .style("font-family", "var(--sans)")
+                .style("font-size", "0.72rem")
+                .style("font-weight", "700")
+                .style("letter-spacing", "0.12em")
+                .style("text-transform", "uppercase")
+                .text("⚠ Danger Threshold Crossed");
+
+              annGroup.append("text")
+                .attr("x", lx + 4)
+                .attr("y", ly - labelH + 38)
+                .style("fill", "#cfe4f7")
+                .style("font-family", "var(--sans)")
+                .style("font-size", "0.82rem")
+                .style("font-weight", "300")
+                .text("Most of the Arctic now exceeds");
+
+              annGroup.append("text")
+                .attr("x", lx + 4)
+                .attr("y", ly - labelH + 54)
+                .style("fill", "#cfe4f7")
+                .style("font-family", "var(--sans)")
+                .style("font-size", "0.82rem")
+                .style("font-weight", "300")
+                .text("safe polar bear heat levels (0°C+).");
+            }
           }
 
           // const projected = yearData.map(d => {
