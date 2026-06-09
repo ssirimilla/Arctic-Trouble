@@ -858,7 +858,7 @@ body {
   width: 100%;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
+  grid-template-columns: 1fr 1.25fr;
   align-items: center;
   gap: 2rem;
   padding: 4rem 8%;
