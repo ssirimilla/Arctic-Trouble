@@ -445,8 +445,12 @@
             .style("stroke", "none")
 
             .on("mouseover", function(event, d) {
+              cellGroup.selectAll(".temp-cell")
+                .style("stroke", "none")
+                .style("opacity", 0.55);
 
-              d3.select(this).raise()
+              d3.select(this)
+                .raise()
                 .style("stroke", "#071525")
                 .style("stroke-width", 3)
                 .style("opacity", 1);
@@ -459,7 +463,7 @@
                   Lat: ${d.lat.toFixed(1)}°<br>
                   Lon: ${d.lon.toFixed(1)}°
                 `);
-            })
+})
 
             .on("mousemove", function(event) {
               tooltip
@@ -467,15 +471,12 @@
                 .style("top", (event.pageY - 20) + "px");
             })
 
-            .on("mouseout", function() {
-
+            .on("mouseleave", function() {
               d3.select(this)
                 .style("stroke", "none")
                 .style("opacity", 0.55);
 
-
-              tooltip
-                .style("opacity", 0);
+              tooltip.style("opacity", 0);
             });
           }
 
