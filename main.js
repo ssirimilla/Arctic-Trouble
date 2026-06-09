@@ -545,7 +545,7 @@
                 .style("font-family", "var(--sans)")
                 .style("font-size", "0.82rem")
                 .style("font-weight", "300")
-                .text("safe polar bear heat levels (0°C+).");
+                .text("safe polar bear heat levels.");
             }
           }
 
