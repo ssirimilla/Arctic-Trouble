@@ -14,12 +14,12 @@
 
   /* ── Step config ─────────────────────────────────────────── */
   const STEPS = [
-    { year: "1980", file: "1980.json", radius: 32, extent: 7.8, loss:  0 },
-    { year: "1990", file: "1990.json", radius: 30, extent: 6.2, loss: 15 },
-    { year: "2000", file: "2000.json", radius: 28, extent: 5.9, loss: 20 },
+    { year: "1980", file: "1980.json", radius: 32, extent: 7.2, loss:  0 },
+    { year: "1990", file: "1990.json", radius: 30, extent: 6.2, loss: 14 },
+    { year: "2000", file: "2000.json", radius: 28, extent: 6.0, loss: 17 },
     { year: "2007", file: "2007.json", radius: 26, extent: 4.3, loss: 40 },
-    { year: "2012", file: "2012.json", radius: 18, extent: 3.4, loss: 56 },
-    { year: "2020", file: "2020.json", radius: 20, extent: 3.9, loss: 50 },
+    { year: "2012", file: "2012.json", radius: 18, extent: 3.6, loss: 50 },
+    { year: "2020", file: "2020.json", radius: 20, extent: 3.9, loss: 46 },
   ];
 
   /* ── DOM refs ────────────────────────────────────────────── */

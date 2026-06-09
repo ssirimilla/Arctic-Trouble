@@ -53,6 +53,24 @@ body {
   background: url('bear.jpg') center/cover no-repeat;
 }
 
+#hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(6, 15, 26, 0.75) 0%,
+    rgba(6, 15, 26, 0.45) 50%,
+    rgba(6, 15, 26, 0.15) 100%
+  );
+  z-index: 0;
+}
+
+#hero > *:not(.scroll-cue) {
+  position: relative;
+  z-index: 1;
+}
+
 .hero-stars {
   position: absolute;
   inset: 0;
@@ -101,7 +119,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: #060f1a;
+  color: rgba(180, 200, 220, 0.75);
   margin-bottom: 1.2rem;
   opacity: 0;
   animation: fade-up 1s var(--ease-smooth) 0.3s forwards;
@@ -126,12 +144,13 @@ body {
 
 .hero-sub {
   font-size: clamp(1rem, 2vw, 1.25rem);
-  color: #000000;
+  color: var(--ice-white);
   max-width: 520px;
   margin: 1.5rem 0 0 0;
   font-weight: 300;
   opacity: 0;
   animation: fade-up 1s var(--ease-smooth) 0.9s forwards;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 
 .scroll-cue {
@@ -143,7 +162,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-muted);
+  color: var(--ice-white);
   font-size: 0.75rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
