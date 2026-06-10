@@ -1477,3 +1477,13 @@ rgba(6,15,26,.95)
 }
 
 }
+
+/* ── Hexbin Hover States ──────────────────────────────────── */
+#choropleth-cells .temp-cell {
+  transition: opacity 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
+}
+#choropleth-cells .temp-cell:hover {
+  opacity: 1 !important;
+  stroke: #fff !important;
+  stroke-width: 2px !important;
+}

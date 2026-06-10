@@ -348,12 +348,7 @@
           .style("stroke-width", "0.9px")
           .attr("d", tempPath);
 
-        // 4) Graticule
-        const grat = d3.geoGraticule().step([30, 10]);
-        mapGroup.append("path")
-          .datum(grat())
-          .attr("class", "graticule")
-          .attr("d", tempPath);
+        // 4) Graticule (Removed per user request)
 
           loadTemperatureData(cellGroup, tempProj, tempPath, w, h);
       })
@@ -433,35 +428,39 @@
             return { xy, temp: d.temp_absolute, lat: d.lat, lon: lon };
           }).filter(Boolean);
 
+          const hexbin = d3.hexbin()
+            .x(d => d.xy[0])
+            .y(d => d.xy[1])
+            .radius(15)
+            .extent([[0, 0], [w, h]]);
+
+          const bins = hexbin(projected);
+
+          bins.forEach(bin => {
+            bin.avgTemp = d3.mean(bin, d => d.temp);
+            bin.avgLat = d3.mean(bin, d => d.lat);
+            bin.avgLon = d3.mean(bin, d => d.lon);
+          });
+
           cellGroup.selectAll(".temp-cell")
-            .data(projected)
-            .join("circle")
+            .data(bins)
+            .join("path")
             .attr("class", "temp-cell")
-            .attr("cx", d => d.xy[0])
-            .attr("cy", d => d.xy[1])
-            .attr("r", 27)
-            .style("fill", d => colorScale(d.temp))
-            .style("opacity", 0.55)
-            .style("stroke", "none")
+            .attr("d", hexbin.hexagon())
+            .attr("transform", d => `translate(${d.x}, ${d.y})`)
+            .style("fill", d => colorScale(d.avgTemp))
+            .style("opacity", 0.95)
+            .style("stroke", "#071525")
+            .style("stroke-width", 0.5)
 
             .on("mouseover", function(event, d) {
-              cellGroup.selectAll(".temp-cell")
-                .style("stroke", "none")
-                .style("opacity", 0.55);
-
-              d3.select(this)
-                .raise()
-                .style("stroke", "#071525")
-                .style("stroke-width", 3)
-                .style("opacity", 1);
-
               tooltip
                 .style("opacity", 1)
                 .html(`
                   <strong>${currentYear}</strong><br>
-                  Temp: ${d.temp.toFixed(1)}°C<br>
-                  Lat: ${d.lat.toFixed(1)}°<br>
-                  Lon: ${d.lon.toFixed(1)}°
+                  Temp: ${d.avgTemp.toFixed(1)}°C<br>
+                  Lat: ~${d.avgLat.toFixed(1)}°<br>
+                  Lon: ~${d.avgLon.toFixed(1)}°
                 `);
             })
 
@@ -472,10 +471,6 @@
             })
 
             .on("mouseleave", function() {
-              d3.select(this)
-                .style("stroke", "none")
-                .style("opacity", 0.55);
-
               tooltip.style("opacity", 0);
             });
 
